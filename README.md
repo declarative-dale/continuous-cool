@@ -64,13 +64,13 @@ Never put the initial token in GitHub issues, Actions output, commits, or docume
 
 ## OOYE application-service registration
 
-Run OOYE natively under systemd on the VPS. Its generated application-service registration must advertise this URL for callbacks from Continuwuity:
+Run OOYE natively under systemd on the VPS. The separate [`matrix-discord-bridge`](https://github.com/declarative-dale/matrix-discord-bridge) repository contains the pinned host installer, hardened service, backup/update scripts, and Coolify proxy template. Its generated application-service registration must advertise this URL for callbacks from Continuwuity:
 
 ```text
 http://host.docker.internal:6693
 ```
 
-OOYE must listen on the Docker bridge host address, or another address reachable through the host gateway; binding only to `127.0.0.1` is normally not reachable from a container. Restrict port 6693 with the host firewall so it is reachable from the Docker bridge but not from the public Internet.
+OOYE must listen on the Docker bridge host address, or another address reachable through the host gateway; binding only to `127.0.0.1` is normally not reachable from a container. Restrict raw port 6693 with the host firewall so it is reachable from the Docker bridge but not from the public Internet. OOYE still needs a separate public HTTPS URL for its website and authenticated-media proxy; route that hostname through Coolify's Traefik proxy to the host service.
 
 In the Continuwuity admin room, send the registration command followed by the complete OOYE registration YAML in a fenced code block:
 
@@ -139,13 +139,15 @@ Use an upstream-supported, application-consistent procedure. Do not make an ordi
 
 ## Updating
 
-Dependabot monitors GitHub Actions weekly, but it cannot update `CONTINUWUITY_VERSION` because that image tag is stored in an environment file. Update Continuwuity manually:
+Dependabot monitors GitHub Actions weekly. A separate scheduled workflow checks the official Continuwuity release API every Monday and opens or refreshes an `automation/continuwuity-update` pull request when the stable tag changes. It validates the proposed image and Compose configuration but never deploys it. Enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** so it can open the PR (the workflow does not approve it).
+
+Apply an approved Continuwuity update through this controlled process:
 
 1. Review the [upstream release notes](https://forgejo.ellis.link/continuwuation/continuwuity/releases).
 2. Take and retain an application-consistent database backup.
-3. Change `CONTINUWUITY_VERSION` in `.env.example` and in Coolify to the same tested, explicit stable tag.
-4. Open a pull request.
-5. Let GitHub Actions validate the Compose file.
+3. Review the automated version pull request, or change `CONTINUWUITY_VERSION` in `.env.example` and open one manually.
+4. Let GitHub Actions validate the image and Compose file.
+5. Change the Coolify `CONTINUWUITY_VERSION` value to the approved tag.
 6. Merge the pull request.
 7. Let Coolify redeploy through its GitHub integration/webhook, or redeploy manually.
 8. Verify client access, federation, persistence, and OOYE bridging.

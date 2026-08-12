@@ -1,0 +1,114 @@
+name: Propose Continuwuity update
+
+on:
+  schedule:
+    - cron: "43 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-updates
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+      old_version: ${{ steps.version.outputs.old_version }}
+      new_version: ${{ steps.version.outputs.new_version }}
+
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check upstream release
+        id: version
+        run: ./scripts/check-updates.sh
+
+      - name: Verify the upstream image exists
+        run: |
+          version=$(sed -n 's/^CONTINUWUITY_VERSION=//p' .env.example)
+          docker buildx imagetools inspect "forgejo.ellis.link/continuwuation/continuwuity:$version"
+
+      - name: Validate proposed configuration
+        run: ./scripts/validate.sh
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet -- .env.example README.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: verify
+    if: needs.verify.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply verified pin
+        env:
+          OLD_VERSION: ${{ needs.verify.outputs.old_version }}
+          NEW_VERSION: ${{ needs.verify.outputs.new_version }}
+        run: |
+          sed -i "s/$OLD_VERSION/$NEW_VERSION/g" .env.example README.md
+          ./scripts/validate.sh
+
+      - name: Push update branch
+        env:
+          BRANCH: automation/continuwuity-update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .env.example README.md
+          git commit -m "Update Continuwuity pin"
+          git fetch origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" || true
+          git push --force-with-lease origin "HEAD:refs/heads/$BRANCH"
+
+      - name: Open or update pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: automation/continuwuity-update
+          OLD_VERSION: ${{ needs.verify.outputs.old_version }}
+          NEW_VERSION: ${{ needs.verify.outputs.new_version }}
+        run: |
+          body=$(mktemp)
+          printf '%s\n' \
+            'Automated weekly Continuwuity update for operator review.' \
+            '' \
+            "- Continuwuity: \`$OLD_VERSION\` -> \`$NEW_VERSION\`" \
+            '' \
+            'The read-only verification job confirmed that the image exists and the deployment policy passes.' \
+            'After merging, update the matching Coolify environment value and redeploy.' \
+            "Update workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            > "$body"
+
+          existing=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [[ -z $existing ]]; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "Update Continuwuity to $NEW_VERSION" \
+              --body-file "$body"
+          else
+            gh pr edit "$existing" \
+              --title "Update Continuwuity to $NEW_VERSION" \
+              --body-file "$body"
+          fi

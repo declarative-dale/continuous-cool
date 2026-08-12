@@ -23,11 +23,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Create validation environment
-        run: cp .env.example .env
+      - name: Run ShellCheck
+        run: shellcheck scripts/*.sh
 
-      - name: Validate Docker Compose
-        run: docker compose --env-file .env config --quiet
+      - name: Validate deployment policy
+        run: ./scripts/validate.sh
 
       - name: Render effective configuration
-        run: docker compose --env-file .env config
+        run: docker compose --env-file .env.example config
