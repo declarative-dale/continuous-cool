@@ -1,0 +1,17 @@
+# Runtime environments and secrets
+.env
+.env.*
+!.env.example
+
+# Matrix/OOYE application-service credentials
+registration.yaml
+**/registration.yaml
+
+# Local persistent data and backups
+data/
+continuwuity-data/
+backups/
+
+# Private keys
+*.key
+*.pem

@@ -1,0 +1,33 @@
+name: Validate deployment
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create validation environment
+        run: cp .env.example .env
+
+      - name: Validate Docker Compose
+        run: docker compose --env-file .env config --quiet
+
+      - name: Render effective configuration
+        run: docker compose --env-file .env config
