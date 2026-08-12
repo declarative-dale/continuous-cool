@@ -1,10 +1,10 @@
 services:
   continuwuity:
-    image: forgejo.ellis.link/continuwuation/continuwuity:${CONTINUWUITY_VERSION:?Set CONTINUWUITY_VERSION}
+    image: forgejo.ellis.link/continuwuation/continuwuity:${CONTINUWUITY_VERSION:?}
     restart: unless-stopped
 
     environment:
-      CONTINUWUITY_SERVER_NAME: ${MATRIX_SERVER_NAME:?Set MATRIX_SERVER_NAME}
+      CONTINUWUITY_SERVER_NAME: ${MATRIX_SERVER_NAME:?}
       CONTINUWUITY_DATABASE_PATH: /var/lib/continuwuity
       CONTINUWUITY_ADDRESS: 0.0.0.0
       CONTINUWUITY_PORT: "8008"
@@ -12,8 +12,8 @@ services:
       CONTINUWUITY_ALLOW_REGISTRATION: "false"
       # Advertise the public HTTPS service while retaining MATRIX_SERVER_NAME
       # as the immutable suffix for Matrix user and room IDs.
-      CONTINUWUITY_WELL_KNOWN__CLIENT: https://${MATRIX_SERVICE_HOSTNAME:?Set MATRIX_SERVICE_HOSTNAME}
-      CONTINUWUITY_WELL_KNOWN__SERVER: ${MATRIX_SERVICE_HOSTNAME:?Set MATRIX_SERVICE_HOSTNAME}:443
+      CONTINUWUITY_WELL_KNOWN__CLIENT: https://${MATRIX_SERVICE_HOSTNAME:?}
+      CONTINUWUITY_WELL_KNOWN__SERVER: ${MATRIX_SERVICE_HOSTNAME:?}:443
 
     volumes:
       - continuwuity-data:/var/lib/continuwuity
