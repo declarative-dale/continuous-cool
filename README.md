@@ -7,13 +7,13 @@ OOYE is deliberately outside this stack. It runs as a native systemd service on 
 ## Prerequisites
 
 - A Coolify v4 server on Debian 13 (x86_64)
-- A DNS A/AAAA record for `matrix.example.org` pointing to the Coolify server
+- A DNS A/AAAA record for the service hostname, such as `matrix.example.org`, pointing to the Coolify server
 - Public ports 80 and 443 available to Coolify's proxy
 - The public GitHub repository connected in Coolify
 - A chosen, permanent Matrix server name
 - OOYE installed separately on the VPS if Discord bridging is required
 
-The server name determines every user and room ID and cannot practically be changed after initialization. Replace `matrix.example.org` everywhere before the first deployment if that is not the permanent name.
+The server name determines every user and room ID and cannot practically be changed after initialization. It does not have to equal the service hostname: for example, `MATRIX_SERVER_NAME=example.org` gives users IDs such as `@alice:example.org`, while `MATRIX_SERVICE_HOSTNAME=matrix.example.org` exposes the server at `https://matrix.example.org`. Choose the server name before the first deployment.
 
 ## Coolify resource creation
 
@@ -24,7 +24,8 @@ The server name determines every user and room ID and cannot practically be chan
 5. Configure these Coolify environment values:
 
    ```text
-   MATRIX_SERVER_NAME=matrix.example.org
+   MATRIX_SERVER_NAME=example.org
+   MATRIX_SERVICE_HOSTNAME=matrix.example.org
    CONTINUWUITY_VERSION=v26.7.3
    ```
 
@@ -91,26 +92,32 @@ Do not commit OOYE's `registration.yaml`, Discord credentials, or application-se
 
 ## Federation and delegation
 
-This deployment serves both client and federation traffic through Coolify on HTTPS port 443. Matrix federation otherwise defaults to port 8448, so the Compose configuration asks Continuwuity to serve `/.well-known/matrix/server` advertising `matrix.example.org:443`. It also serves the client discovery document. Coolify must proxy `/.well-known/matrix/*` to the service; assigning the whole hostname to the service normally does so.
+This deployment serves both client and federation traffic through Coolify on HTTPS port 443. Matrix federation otherwise defaults to port 8448, so the Compose configuration asks Continuwuity to advertise `MATRIX_SERVICE_HOSTNAME` on port 443. It also configures client discovery to advertise that service hostname.
 
-With the example configuration, the Matrix server name and service hostname are identical, and no cross-hostname delegation is required. The port-443 discovery record is still required. Verify both documents:
+When `MATRIX_SERVER_NAME` and `MATRIX_SERVICE_HOSTNAME` differ, the server-name origin must serve the discovery documents. For the checked-in example, serve these at `https://example.org`:
 
-```bash
-curl https://matrix.example.org/.well-known/matrix/server
-curl https://matrix.example.org/.well-known/matrix/client
-```
-
-If the permanent server name differs from the service hostname—for example, IDs use `example.org` but Continuwuity is hosted at `matrix.example.org`—do not deploy this Compose file unchanged. Serve these documents from the **server-name origin** (`https://example.org` in this example):
+`/.well-known/matrix/server`:
 
 ```json
 {"m.server":"matrix.example.org:443"}
 ```
 
+`/.well-known/matrix/client`:
+
 ```json
 {"m.homeserver":{"base_url":"https://matrix.example.org"}}
 ```
 
-The client document must include `Access-Control-Allow-Origin: *`. Change the Compose well-known client/server values to the actual service hostname while keeping `MATRIX_SERVER_NAME` set to the permanent ID suffix. See Continuwuity's [delegation guide](https://continuwuity.org/advanced/delegation) before initialization.
+The client document must include `Access-Control-Allow-Origin: *`. The apex website or proxy can serve these static responses or proxy only `/.well-known/matrix/*` to Continuwuity. Merely assigning `matrix.example.org` to the Coolify service does not configure `example.org`.
+
+Verify discovery at the **server-name origin**:
+
+```bash
+curl https://example.org/.well-known/matrix/server
+curl https://example.org/.well-known/matrix/client
+```
+
+If both variables are the same, cross-hostname delegation is unnecessary, but federation discovery still needs to advertise port 443. See Continuwuity's [delegation guide](https://continuwuity.org/advanced/delegation) before initialization.
 
 After deployment, check the public endpoints:
 
@@ -192,4 +199,4 @@ docker compose --env-file .env.example config --quiet
 docker compose --env-file .env.example config
 ```
 
-For a local run, copy `.env.example` to the ignored `.env` and replace the server name before initialization. Do not use the example hostname for a real deployment.
+For a local run, copy `.env.example` to the ignored `.env` and replace both host values before initialization. Do not use the example domains for a real deployment.

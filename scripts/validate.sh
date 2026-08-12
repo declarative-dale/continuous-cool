@@ -18,6 +18,9 @@ raise "host ports must not be published" if service.key?("ports")
 raise "custom networks are not allowed" if compose.key?("networks")
 raise "registration must remain disabled" unless service.dig("environment", "CONTINUWUITY_ALLOW_REGISTRATION") == "false"
 raise "federation must remain enabled" unless service.dig("environment", "CONTINUWUITY_ALLOW_FEDERATION") == "true"
+raise "server name must determine Matrix IDs" unless service.dig("environment", "CONTINUWUITY_SERVER_NAME") == "${MATRIX_SERVER_NAME:?Set MATRIX_SERVER_NAME}"
+raise "client discovery must use the service hostname" unless service.dig("environment", "CONTINUWUITY_WELL_KNOWN__CLIENT") == "https://${MATRIX_SERVICE_HOSTNAME:?Set MATRIX_SERVICE_HOSTNAME}"
+raise "federation discovery must use the service hostname" unless service.dig("environment", "CONTINUWUITY_WELL_KNOWN__SERVER") == "${MATRIX_SERVICE_HOSTNAME:?Set MATRIX_SERVICE_HOSTNAME}:443"
 raise "persistent volume mapping changed" unless service.fetch("volumes") == ["continuwuity-data:/var/lib/continuwuity"]
 raise "image must remain explicitly versioned" if service.fetch("image").end_with?(":latest")
 RUBY
