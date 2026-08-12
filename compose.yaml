@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
 
     environment:
+      # Coolify 4.1 does not discover variables referenced only by image tags.
+      # Expose the pin as inert deployment metadata so it appears in the UI.
+      DEPLOYMENT_IMAGE_VERSION: ${CONTINUWUITY_VERSION:?}
       CONTINUWUITY_SERVER_NAME: ${MATRIX_SERVER_NAME:?}
       CONTINUWUITY_DATABASE_PATH: /var/lib/continuwuity
       CONTINUWUITY_ADDRESS: 0.0.0.0

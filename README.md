@@ -45,6 +45,32 @@ The server name determines every user and room ID and cannot practically be chan
 
 The `:8008` suffix in the Coolify domain tells its proxy which **internal** container port to use. Clients still connect to normal HTTPS port 443. The Compose file uses `expose`, not `ports`, so port 8008 is not published directly on the host.
 
+### Empty Compose editor or environment list
+
+Coolify performs Git and Compose operations by connecting from its container back to the managed server over SSH, including when Coolify runs on that same server. If **Load Compose File** leaves the editor and environment list empty, test the path from inside the Coolify container and inspect the Coolify application log for SSH timeouts.
+
+With a default-deny UFW policy, permit only the Coolify Docker bridge subnet to reach the host's Docker-gateway address on port 22:
+
+```bash
+ufw allow in \
+  on <coolify-bridge-interface> \
+  from <coolify-ipv4-subnet> \
+  to <docker-host-gateway-ip> \
+  port 22 proto tcp \
+  comment 'Coolify internal SSH'
+```
+
+Discover the installation-specific interface, subnet, and gateway rather than copying values from another server:
+
+```bash
+docker network inspect coolify
+ip -brief address
+```
+
+This is an inbound container-to-host exception; it does not require exposing SSH on the public interface or permitting unrestricted outbound TCP port 22. Keep public administrative SSH restricted to the trusted interface, such as Tailscale.
+
+Coolify 4.1 discovers variables in a service's `environment` mapping but does not reliably create a UI field for a variable referenced only in `image:`. `DEPLOYMENT_IMAGE_VERSION` therefore mirrors the non-secret `CONTINUWUITY_VERSION` pin as inert container metadata. Continuwuity does not use that metadata variable.
+
 ### Health monitoring
 
 The official Continuwuity image contains the server binary and required runtime files but intentionally contains no shell, `wget`, or `curl`. For that reason, this stack does not define an in-container Compose health check or install runtime packages just to provide one. Configure Coolify or an external monitor to request:

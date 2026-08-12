@@ -18,6 +18,7 @@ raise "host ports must not be published" if service.key?("ports")
 raise "custom networks are not allowed" if compose.key?("networks")
 raise "registration must remain disabled" unless service.dig("environment", "CONTINUWUITY_ALLOW_REGISTRATION") == "false"
 raise "federation must remain enabled" unless service.dig("environment", "CONTINUWUITY_ALLOW_FEDERATION") == "true"
+raise "image pin must be discoverable by Coolify" unless service.dig("environment", "DEPLOYMENT_IMAGE_VERSION") == "${CONTINUWUITY_VERSION:?}"
 raise "server name must determine Matrix IDs" unless service.dig("environment", "CONTINUWUITY_SERVER_NAME") == "${MATRIX_SERVER_NAME:?}"
 raise "client discovery must use the service hostname" unless service.dig("environment", "CONTINUWUITY_WELL_KNOWN__CLIENT") == "https://${MATRIX_SERVICE_HOSTNAME:?}"
 raise "federation discovery must use the service hostname" unless service.dig("environment", "CONTINUWUITY_WELL_KNOWN__SERVER") == "${MATRIX_SERVICE_HOSTNAME:?}:443"
