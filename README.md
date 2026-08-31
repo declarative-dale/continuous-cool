@@ -26,7 +26,7 @@ The server name determines every user and room ID and cannot practically be chan
    ```text
    MATRIX_SERVER_NAME=example.org
    MATRIX_SERVICE_HOSTNAME=matrix.example.org
-   CONTINUWUITY_VERSION=v26.7.3
+   CONTINUWUITY_VERSION=v26.8.1
    ```
 
 6. Assign this domain to the `continuwuity` service:
